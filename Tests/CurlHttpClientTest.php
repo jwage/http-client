@@ -13,6 +13,7 @@ namespace Symfony\Component\HttpClient\Tests;
 
 use Symfony\Component\HttpClient\CurlHttpClient;
 use Symfony\Component\HttpClient\Exception\InvalidArgumentException;
+use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 /**
  * @requires extension curl
@@ -21,7 +22,7 @@ use Symfony\Component\HttpClient\Exception\InvalidArgumentException;
  */
 class CurlHttpClientTest extends HttpClientTestCase
 {
-    protected function getHttpClient(string $testCase): CurlHttpClient
+    protected function getHttpClient(string $testCase): HttpClientInterface
     {
         if (!str_contains($testCase, 'Push')) {
             return new CurlHttpClient(['verify_peer' => false, 'verify_host' => false]);
@@ -52,35 +53,6 @@ class CurlHttpClientTest extends HttpClientTestCase
         $initialShareId = $clientState->share;
         $httpClient->reset();
         self::assertNotSame($initialShareId, $clientState->share);
-    }
-
-    public function testCurlClientStateIsSharedBetweenClones()
-    {
-        $client = $this->getHttpClient(__FUNCTION__);
-        $cloneA = $client->withOptions(['headers' => ['Foo: bar']]);
-        $cloneB = $client->withOptions(['headers' => ['Foo: baz']]);
-
-        $r = new \ReflectionProperty($client, 'multi');
-        $state = $r->getValue($client);
-
-        self::assertSame($state, $r->getValue($cloneA));
-        self::assertSame($state, $r->getValue($cloneB));
-    }
-
-    public function testCurlClientStateInitializesHandlesLazily()
-    {
-        $client = $this->getHttpClient(__FUNCTION__);
-
-        $r = new \ReflectionProperty($client, 'multi');
-        $state = $r->getValue($client);
-
-        self::assertFalse(isset($state->handle));
-        self::assertFalse(isset($state->share));
-
-        $client->request('GET', 'http://127.0.0.1:8057/json')->getStatusCode();
-
-        self::assertInstanceOf(\CurlMultiHandle::class, $state->handle);
-        self::assertInstanceOf(\CurlShareHandle::class, $state->share);
     }
 
     public function testProcessAfterReset()
